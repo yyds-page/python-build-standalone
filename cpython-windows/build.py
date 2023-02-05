@@ -38,6 +38,7 @@ ROOT = pathlib.Path(os.path.abspath(__file__)).parent.parent
 BUILD = ROOT / "build"
 DIST = ROOT / "dist"
 SUPPORT = ROOT / "cpython-windows"
+BUILD_PARENT_DIR = ROOT.parent
 
 LOG_PREFIX = [None]
 LOG_FH = [None]
@@ -114,7 +115,6 @@ EXTENSION_TO_LIBRARY_DOWNLOADS_ENTRY = {
     "_uuid": ["uuid"],
     "zlib": ["zlib"],
 }
-
 
 # Tests to run during PGO profiling.
 #
@@ -210,10 +210,10 @@ def exec_and_log(args, cwd, env, exit_on_error=True):
 
 def find_vswhere():
     vswhere = (
-        pathlib.Path(os.environ["ProgramFiles(x86)"])
-        / "Microsoft Visual Studio"
-        / "Installer"
-        / "vswhere.exe"
+            pathlib.Path(os.environ["ProgramFiles(x86)"])
+            / "Microsoft Visual Studio"
+            / "Installer"
+            / "vswhere.exe"
     )
 
     if not vswhere.exists():
@@ -291,7 +291,7 @@ def find_vctools_path():
     p = pathlib.Path(p.strip().decode("utf-8"))
 
     version_path = (
-        p / "VC" / "Auxiliary" / "Build" / "Microsoft.VCToolsVersion.default.txt"
+            p / "VC" / "Auxiliary" / "Build" / "Microsoft.VCToolsVersion.default.txt"
     )
 
     with version_path.open("r", encoding="utf-8") as fh:
@@ -437,10 +437,10 @@ def make_project_static_library(source_path: pathlib.Path, project: str):
 
 
 def convert_to_static_library(
-    source_path: pathlib.Path,
-    extension: str,
-    entry: dict,
-    honor_allow_missing_preprocessor: bool,
+        source_path: pathlib.Path,
+        extension: str,
+        entry: dict,
+        honor_allow_missing_preprocessor: bool,
 ):
     """Converts an extension to a static library."""
 
@@ -514,7 +514,7 @@ def convert_to_static_library(
             sys.exit(1)
 
         log("changing %s to automatically link library dependencies" % extension)
-        lines[itemdefinitiongroup_line + 1 : itemdefinitiongroup_line + 1] = [
+        lines[itemdefinitiongroup_line + 1: itemdefinitiongroup_line + 1] = [
             "    <ProjectReference>",
             "      <LinkLibraryDependencies>true</LinkLibraryDependencies>",
             "    </ProjectReference>",
@@ -545,10 +545,10 @@ def convert_to_static_library(
 
     if start_line is not None and end_line is not None:
         log("stripping pythoncore dependency from %s" % extension)
-        for line in lines[start_line : end_line + 1]:
+        for line in lines[start_line: end_line + 1]:
             log(line)
 
-        lines = lines[:start_line] + lines[end_line + 1 :]
+        lines = lines[:start_line] + lines[end_line + 1:]
 
     with proj_path.open("w", encoding="utf8") as fh:
         fh.write("\n".join(lines))
@@ -740,10 +740,10 @@ LIBFFI_PROPS_REMOVE_RULES = b"""
 
 
 def hack_props(
-    td: pathlib.Path,
-    pcbuild_path: pathlib.Path,
-    arch: str,
-    static: bool,
+        td: pathlib.Path,
+        pcbuild_path: pathlib.Path,
+        arch: str,
+        static: bool,
 ):
     # TODO can we pass props into msbuild.exe?
 
@@ -785,7 +785,7 @@ def hack_props(
 
             elif b"<opensslIncludeDir>" in line:
                 line = (
-                    b"<opensslIncludeDir>%s</opensslIncludeDir>" % openssl_include_path
+                        b"<opensslIncludeDir>%s</opensslIncludeDir>" % openssl_include_path
                 )
 
             elif b"<opensslOutDir>" in line:
@@ -891,12 +891,12 @@ def hack_props(
 
 
 def hack_project_files(
-    td: pathlib.Path,
-    cpython_source_path: pathlib.Path,
-    build_directory: str,
-    python_version: str,
-    static: bool,
-    honor_allow_missing_preprocessor: bool,
+        td: pathlib.Path,
+        cpython_source_path: pathlib.Path,
+        build_directory: str,
+        python_version: str,
+        static: bool,
+        honor_allow_missing_preprocessor: bool,
 ):
     """Hacks Visual Studio project files to work with our build."""
 
@@ -1013,7 +1013,7 @@ def hack_project_files(
             init_fn = entry.get("init", "PyInit_%s" % extension)
 
             if convert_to_static_library(
-                cpython_source_path, extension, entry, honor_allow_missing_preprocessor
+                    cpython_source_path, extension, entry, honor_allow_missing_preprocessor
             ):
                 add_to_config_c(cpython_source_path, extension, init_fn)
 
@@ -1329,7 +1329,6 @@ SYSMODULE_WINVER_SEARCH_38 = b"""
 #endif
 """
 
-
 SYSMODULE_WINVER_REPLACE_38 = b"""
 #ifdef MS_COREDLL
     SET_SYS_FROM_STRING("dllhandle",
@@ -1506,13 +1505,13 @@ def hack_source_files(source_path: pathlib.Path, static: bool, python_version: s
 
 
 def run_msbuild(
-    msbuild: pathlib.Path,
-    pcbuild_path: pathlib.Path,
-    configuration: str,
-    platform: str,
-    static: bool,
-    python_version: str,
-    windows_sdk_version: str,
+        msbuild: pathlib.Path,
+        pcbuild_path: pathlib.Path,
+        configuration: str,
+        platform: str,
+        static: bool,
+        python_version: str,
+        windows_sdk_version: str,
 ):
     args = [
         str(msbuild),
@@ -1534,21 +1533,21 @@ def run_msbuild(
         # We pin the Windows 10 SDK version to make builds more deterministic.
         # This can also work around known incompatibilities with the Windows 11
         # SDK as of at least CPython 3.9.7.
-        f"/property:DefaultWindowsSDKVersion={windows_sdk_version}",
+        # f"/property:DefaultWindowsSDKVersion={windows_sdk_version}",
     ]
 
     exec_and_log(args, str(pcbuild_path), os.environ)
 
 
 def build_openssl_for_arch(
-    perl_path,
-    arch: str,
-    openssl_archive,
-    nasm_archive,
-    build_root: pathlib.Path,
-    profile: str,
-    *,
-    jom_archive,
+        perl_path,
+        arch: str,
+        openssl_archive,
+        nasm_archive,
+        build_root: pathlib.Path,
+        profile: str,
+        *,
+        jom_archive,
 ):
     openssl_version = DOWNLOADS["openssl"]["version"]
     nasm_version = DOWNLOADS["nasm-windows-bin"]["version"]
@@ -1640,7 +1639,7 @@ def build_openssl_for_arch(
 
 
 def build_openssl(
-    perl_path: pathlib.Path, arch: str, profile: str, dest_archive: pathlib.Path
+        perl_path: pathlib.Path, arch: str, profile: str, dest_archive: pathlib.Path
 ):
     """Build OpenSSL from sources using the Perl executable specified."""
 
@@ -1649,7 +1648,7 @@ def build_openssl(
     nasm_archive = download_entry("nasm-windows-bin", BUILD)
     jom_archive = download_entry("jom-windows-bin", BUILD)
 
-    with tempfile.TemporaryDirectory(prefix="openssl-build-") as td:
+    with tempfile.TemporaryDirectory(prefix="openssl-build-", dir=BUILD_PARENT_DIR) as td:
         td = pathlib.Path(td)
 
         root_32 = td / "x86"
@@ -1692,14 +1691,14 @@ def build_openssl(
 
 
 def build_libffi(
-    python: str,
-    arch: str,
-    sh_exe: pathlib.Path,
-    msvc_version: str,
-    dest_archive: pathlib.Path,
-    static: bool,
+        python: str,
+        arch: str,
+        sh_exe: pathlib.Path,
+        msvc_version: str,
+        dest_archive: pathlib.Path,
+        static: bool,
 ):
-    with tempfile.TemporaryDirectory(prefix="libffi-build-") as td:
+    with tempfile.TemporaryDirectory(prefix="libffi-build-", dir=BUILD_PARENT_DIR) as td:
         td = pathlib.Path(td)
 
         ffi_source_path = td / "libffi"
@@ -1720,6 +1719,7 @@ def build_libffi(
                 str(ffi_source_path),
             ],
             check=True,
+            stdout=sys.stdout, stderr=sys.stderr
         )
 
         subprocess.run(
@@ -1732,6 +1732,7 @@ def build_libffi(
             ],
             cwd=ffi_source_path,
             check=True,
+            stdout=sys.stdout, stderr=sys.stderr
         )
 
         # We build libffi by running the build script that CPython ships.
@@ -1740,10 +1741,10 @@ def build_libffi(
 
         python_entry = DOWNLOADS[python]
         prepare_libffi = (
-            td
-            / ("Python-%s" % python_entry["version"])
-            / "PCbuild"
-            / "prepare_libffi.bat"
+                td
+                / ("Python-%s" % python_entry["version"])
+                / "PCbuild"
+                / "prepare_libffi.bat"
         )
 
         if static:
@@ -1792,7 +1793,7 @@ def build_libffi(
             args.append("-x64")
             artifacts_path = ffi_source_path / "x86_64-w64-cygwin"
 
-        subprocess.run(args, env=env, check=True)
+        subprocess.run(args, env=env, check=True, stdout=sys.stdout, stderr=sys.stderr)
 
         out_dir = td / "out" / "libffi"
         out_dir.mkdir(parents=True)
@@ -1816,12 +1817,12 @@ RE_ADDITIONAL_DEPENDENCIES = re.compile(
 
 
 def collect_python_build_artifacts(
-    pcbuild_path: pathlib.Path,
-    out_dir: pathlib.Path,
-    python_majmin: str,
-    arch: str,
-    config: str,
-    static: bool,
+        pcbuild_path: pathlib.Path,
+        out_dir: pathlib.Path,
+        python_majmin: str,
+        arch: str,
+        config: str,
+        static: bool,
 ):
     """Collect build artifacts from Python.
 
@@ -1830,7 +1831,7 @@ def collect_python_build_artifacts(
     """
     outputs_path = pcbuild_path / arch
     intermediates_path = (
-        pcbuild_path / "obj" / ("%s%s_%s" % (python_majmin, arch, config))
+            pcbuild_path / "obj" / ("%s%s_%s" % (python_majmin, arch, config))
     )
 
     if not outputs_path.exists():
@@ -1907,7 +1908,7 @@ def collect_python_build_artifacts(
         }
 
     known_projects = (
-        ignore_projects | other_projects | depends_projects | extension_projects
+            ignore_projects | other_projects | depends_projects | extension_projects
     )
 
     unknown = dirs - known_projects
@@ -2032,21 +2033,21 @@ def collect_python_build_artifacts(
 
         if static:
             for lib in CONVERT_TO_BUILTIN_EXTENSIONS.get(ext, {}).get(
-                "static_depends", []
+                    "static_depends", []
             ):
                 entry["links"].append(
                     {"name": lib, "path_static": "build/lib/%s.lib" % lib}
                 )
         else:
             for lib in CONVERT_TO_BUILTIN_EXTENSIONS.get(ext, {}).get(
-                "shared_depends", []
+                    "shared_depends", []
             ):
                 entry["links"].append(
                     {"name": lib, "path_dynamic": "install/DLLs/%s.dll" % lib}
                 )
 
             for lib in CONVERT_TO_BUILTIN_EXTENSIONS.get(ext, {}).get(
-                "shared_depends_%s" % arch, []
+                    "shared_depends_%s" % arch, []
             ):
                 entry["links"].append(
                     {"name": lib, "path_dynamic": "install/DLLs/%s.dll" % lib}
@@ -2054,7 +2055,7 @@ def collect_python_build_artifacts(
 
         if static:
             for lib in CONVERT_TO_BUILTIN_EXTENSIONS.get(ext, {}).get(
-                "static_depends_no_project", []
+                    "static_depends_no_project", []
             ):
                 entry["links"].append(
                     {"name": lib, "path_static": "build/lib/%s.lib" % lib}
@@ -2116,14 +2117,14 @@ def collect_python_build_artifacts(
 
 
 def build_cpython(
-    python_entry_name: str,
-    target_triple: str,
-    arch: str,
-    profile,
-    msvc_version: str,
-    windows_sdk_version: str,
-    openssl_archive,
-    libffi_archive,
+        python_entry_name: str,
+        target_triple: str,
+        arch: str,
+        profile,
+        msvc_version: str,
+        windows_sdk_version: str,
+        openssl_archive,
+        libffi_archive,
 ):
     static = "static" in profile
     pgo = "-pgo" in profile
@@ -2159,19 +2160,19 @@ def build_cpython(
     else:
         raise ValueError("unhandled arch: %s" % arch)
 
-    with tempfile.TemporaryDirectory(prefix="python-build-") as td:
+    with tempfile.TemporaryDirectory(prefix="python-build-", dir=BUILD_PARENT_DIR) as td:
         td = pathlib.Path(td)
 
         with concurrent.futures.ThreadPoolExecutor(10) as e:
             fs = []
             for a in (
-                python_archive,
-                bzip2_archive,
-                openssl_archive,
-                sqlite_archive,
-                tk_bin_archive,
-                xz_archive,
-                zlib_archive,
+                    python_archive,
+                    bzip2_archive,
+                    openssl_archive,
+                    sqlite_archive,
+                    tk_bin_archive,
+                    xz_archive,
+                    zlib_archive,
             ):
                 log("extracting %s to %s" % (a, td))
                 fs.append(e.submit(extract_tar_to_directory, a, td))
@@ -2254,7 +2255,7 @@ def build_cpython(
             # test execution. We work around this by invoking the test harness
             # separately for each test.
             instrumented_python = (
-                pcbuild_path / build_directory / "instrumented" / "python.exe"
+                    pcbuild_path / build_directory / "instrumented" / "python.exe"
             )
 
             tests = subprocess.run(
@@ -2523,6 +2524,7 @@ def build_cpython(
             ],
             env=env,
             check=True,
+            stdout=sys.stdout, stderr=sys.stderr
         )
 
         with metadata_path.open("rb") as fh:
@@ -2547,12 +2549,12 @@ def build_cpython(
             json.dump(python_info, fh, sort_keys=True, indent=4)
 
         dest_path = BUILD / (
-            "cpython-%s-%s-%s.tar"
-            % (
-                entry["version"],
-                target_triple,
-                profile,
-            )
+                "cpython-%s-%s-%s.tar"
+                % (
+                    entry["version"],
+                    target_triple,
+                    profile,
+                )
         )
 
         data = io.BytesIO()
@@ -2629,7 +2631,9 @@ def main():
         # TODO need better dependency checking.
         openssl_archive = BUILD / ("openssl-%s-%s.tar" % (target_triple, args.profile))
         if not openssl_archive.exists():
-            perl_path = fetch_strawberry_perl() / "perl" / "bin" / "perl.exe"
+            strawberry_dir = pathlib.Path("C:\\Strawberry") if os.path.exists(
+                "C:\\Strawberry") else fetch_strawberry_perl()
+            perl_path = strawberry_dir / "perl" / "bin" / "perl.exe"
             LOG_PREFIX[0] = "openssl"
             build_openssl(
                 perl_path, arch, profile=args.profile, dest_archive=openssl_archive
@@ -2661,7 +2665,10 @@ def main():
         if "PYBUILD_RELEASE_TAG" in os.environ:
             release_tag = os.environ["PYBUILD_RELEASE_TAG"]
         else:
-            release_tag = release_tag_from_git()
+            try:
+                release_tag = release_tag_from_git()
+            except Exception as _e:
+                release_tag = "release"
 
         compress_python_archive(
             tar_path,
